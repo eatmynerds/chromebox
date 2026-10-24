@@ -14,7 +14,7 @@ check_secrets_untracked() {
 
 require_env() {
   if [ ! -f .env ]; then
-    echo "error: no .env -- run: cp .env.example .env  and add your public key" >&2
+    echo "error: no .env -- run: cp env.example .env  and add your public key" >&2
     exit 1
   fi
 }
@@ -49,6 +49,18 @@ build_password_hash() {
   pw=$(env_value USER_PASSWORD)
   [ -n "$pw" ] || return 0
   printf '%s' "$pw" | openssl passwd -6 -stdin > "$out"
+}
+
+build_portainer_password() {
+  local out=$1 pw
+  require_env
+  pw=$(env_value PORTAINER_ADMIN_PASSWORD)
+  [ -n "$pw" ] || return 0
+  if [ "${#pw}" -lt 12 ]; then
+    echo "error: PORTAINER_ADMIN_PASSWORD must be at least 12 characters (Portainer's rule)" >&2
+    exit 1
+  fi
+  printf '%s' "$pw" > "$out"
 }
 
 ensure_token() {

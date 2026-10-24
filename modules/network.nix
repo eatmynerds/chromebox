@@ -1,12 +1,14 @@
-{ lib, inventory, host, config, ... }:
+{ lib, inventory, host, ... }:
 let
   c = inventory.cluster;
   vlanIface = "vlan${toString c.vlanId}";
 
-  uplinkMatch =
+  # static ip on any wired port, or just the one with `mac` if set
+  # lan0 is for nodes from the old config
+  wiredMatch =
     if host.mac != null
     then { PermanentMACAddress = host.mac; }
-    else { Type = "ether"; Path = "pci-*"; };
+    else { Name = "en* lan0"; };
 
   l3 = {
     address = [ "${host.ip}/${toString c.prefixLength}" ];
@@ -16,10 +18,11 @@ let
   };
 in
 {
+  # flannel iface, null = default route
   options.cluster.iface = lib.mkOption {
-    type = lib.types.str;
+    type = lib.types.nullOr lib.types.str;
     readOnly = true;
-    default = if c.taggedVlan then vlanIface else "lan0";
+    default = if c.taggedVlan then vlanIface else null;
   };
 
   config = {
@@ -27,13 +30,13 @@ in
     networking.useNetworkd = true;
     networking.wireless.enable = false;
 
+    # some usb adapters show up as a cd drive first
+    hardware.usb-modeswitch.enable = true;
+
     systemd.network = {
       enable = true;
 
-      links."10-lan0" = {
-        matchConfig = uplinkMatch;
-        linkConfig.Name = "lan0";
-      };
+      wait-online.anyInterface = true;
 
       netdevs = lib.mkIf c.taggedVlan {
         "20-${vlanIface}" = {
@@ -44,28 +47,28 @@ in
 
       networks =
         if c.taggedVlan then {
-          "10-lan0" = {
-            matchConfig.Name = "lan0";
+          "10-wired" = {
+            matchConfig = wiredMatch;
             vlan = [ vlanIface ];
             networkConfig.LinkLocalAddressing = "no";
             linkConfig.RequiredForOnline = "carrier";
           };
           "20-${vlanIface}" = { matchConfig.Name = vlanIface; } // l3;
         } else {
-          "10-lan0" = { matchConfig.Name = "lan0"; } // l3;
+          "10-wired" = { matchConfig = wiredMatch; } // l3;
         };
     };
 
     networking.firewall = {
       enable = true;
       allowedTCPPorts = [
-        6443  # Kubernetes API
-        2379  # etcd client (servers)
-        2380  # etcd peer (servers)
-        10250 # kubelet metrics/logs
+        6443  # k8s api
+        2379  # etcd
+        2380  # etcd peer
+        10250 # kubelet
       ];
-      allowedTCPPortRanges = [{ from = 30000; to = 32767; }]; # NodePorts (Portainer = 30777/30779)
-      allowedUDPPorts = [ 8472 ]; # flannel VXLAN
+      allowedTCPPortRanges = [{ from = 30000; to = 32767; }]; # nodeports
+      allowedUDPPorts = [ 8472 ]; # flannel
       trustedInterfaces = [ "cni0" "flannel.1" ];
     };
   };

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-# Usage: ./scripts/deploy.sh            # all hosts (init server, then servers, then agents)
-#        ./scripts/deploy.sh tp2 cb1    # specific hosts
+# usage: deploy.sh [hosts...]
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -14,8 +13,16 @@ stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 build_authorized_keys "$stage/authorized_keys"
 build_password_hash "$stage/user-password.hash"
+build_portainer_password "$stage/portainer-admin-password"
 
 hosts_json=$(nix eval --json --file ./inventory.nix hosts)
+
+# no nixos-rebuild on wsl
+if command -v nixos-rebuild >/dev/null; then
+  rebuild=(nixos-rebuild)
+else
+  rebuild=(nix run --inputs-from . nixpkgs#nixos-rebuild --)
+fi
 
 if [ $# -gt 0 ]; then
   targets=("$@")
@@ -33,5 +40,8 @@ for h in "${targets[@]}"; do
   if [ -f "$stage/user-password.hash" ]; then
     ssh "root@$ip" 'install -D -m 600 /dev/stdin /etc/nixos-secrets/user-password.hash' < "$stage/user-password.hash"
   fi
-  nixos-rebuild switch --flake ".#$h" --target-host "root@$ip"
+  if [ -f "$stage/portainer-admin-password" ]; then
+    ssh "root@$ip" 'install -D -m 600 /dev/stdin /etc/nixos-secrets/portainer-admin-password' < "$stage/portainer-admin-password"
+  fi
+  "${rebuild[@]}" switch --flake ".#$h" --target-host "root@$ip"
 done

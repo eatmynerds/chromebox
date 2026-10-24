@@ -12,7 +12,7 @@ udevadm settle
 
 get() { jq -r --arg n "$host" ".[\$n].$1" "$HOSTS_JSON"; }
 
-# --- 1. Which host is this? --------------------------------------------------
+# which host is this
 host=""
 while read -r mac; do
   match=$(jq -r --arg mac "$mac" 'to_entries[] | select(.value.mac == $mac) | .key' "$HOSTS_JSON")
@@ -99,6 +99,9 @@ install -D -m 644 "$SECRETS/authorized_keys" /mnt/etc/ssh/cluster_authorized_key
 install -D -m 600 "$SECRETS/k3s-token" /mnt/var/lib/rancher/k3s/cluster-token
 if [ -f "$SECRETS/user-password.hash" ]; then
   install -D -m 600 "$SECRETS/user-password.hash" /mnt/etc/nixos-secrets/user-password.hash
+fi
+if [ -f "$SECRETS/portainer-admin-password" ]; then
+  install -D -m 600 "$SECRETS/portainer-admin-password" /mnt/etc/nixos-secrets/portainer-admin-password
 fi
 
 say "Installing NixOS as $host (a few minutes)"

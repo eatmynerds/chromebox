@@ -2,7 +2,7 @@
 {
   hardware.cpu.intel.updateMicrocode = true;
 
-  # Always plugged in: cap the battery at 80% so it doesn't swell.
+  # always plugged in, cap at 80%
   services.tlp = {
     enable = true;
     settings = {

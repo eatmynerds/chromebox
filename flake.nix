@@ -21,6 +21,7 @@
           ./modules/network.nix
           ./modules/disk.nix
           ./modules/k3s.nix
+          ./modules/jellyfin.nix
           ./modules/laptop-server.nix
           (./modules/hardware + "/${host.hardware}.nix")
         ];

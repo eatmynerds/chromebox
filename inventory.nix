@@ -13,6 +13,12 @@
     apiAddress = "192.168.1.201";
 
     adminUser = "nerds";
+
+    # jellyfin per node, value is the nodeport
+    mediaHosts = {
+      tp2 = 30096;
+      tp3 = 30097;
+    };
   };
 
   hosts = {

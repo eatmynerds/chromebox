@@ -1,14 +1,10 @@
 #!/usr/bin/env bash
-# Builds the auto-installer ISO. Flash it to a USB stick once, then boot every
-# node (ThinkPad or Chromebook) from it -- it wipes the disk and installs.
-#
-# Usage: ./scripts/build-usb.sh
-# Rebuild it after changing inventory.nix, modules/, or .env.
+# builds k3s-installer.iso, rebuild after changing anything
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib.sh
 
-# Flakes only see files git knows about; .gitignore keeps the secrets out.
+# flakes only see tracked files
 git add -A
 check_secrets_untracked
 
@@ -16,6 +12,7 @@ stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 build_authorized_keys "$stage/authorized_keys"
 build_password_hash "$stage/user-password.hash"
+build_portainer_password "$stage/portainer-admin-password"
 ensure_token
 cp secrets/k3s-token "$stage/k3s-token"
 

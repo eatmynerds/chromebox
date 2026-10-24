@@ -1,0 +1,16 @@
+# secrets
+.env
+.env.*
+secrets/
+*.key
+*.pem
+id_rsa*
+id_ed25519*
+k3s.yaml
+kubeconfig*
+
+# iso has the token in it
+*.iso
+
+result
+result-*
